@@ -1,113 +1,178 @@
-#!/usr/bin/env python3
 """
-Adidas Supply Planning System - Main Entry Point
-A scalable multi-agent system for supply chain optimization using LangGraph, OpenAI, and RAG.
+Simple standalone runner for Adidas Supply Planning System.
+Run the graph directly without Streamlit UI.
 """
+import uuid
+from graph import supply_planning_graph
+from db import db_manager
 
-import os
-import sys
-import argparse
-import uvicorn
-from pathlib import Path
+# Store conversation history per session
+sessions = {}
 
-# Add project root to path
-sys.path.append(str(Path(__file__).parent))
-
-from config.logging_config import get_logger
-from config.settings import settings
-
-logger = get_logger(__name__)
-
-def check_environment():
-    """Check if all environment variables are set"""
-    required_vars = ["OPENAI_API_KEY"]
-    missing_vars = [var for var in required_vars if not os.getenv(var)]
+def run_query(query, session_id=None, history=None):
+    """Run a single query and print the result."""
     
-    if missing_vars:
-        logger.error(f"Missing required environment variables: {missing_vars}")
-        logger.info("Please set them in .env file or environment")
-        return False
+    # Use provided session_id or create new one
+    if session_id is None:
+        session_id = str(uuid.uuid4())
     
-    # Optional Redis check
-    if not os.getenv("REDIS_HOST"):
-        logger.warning("Redis not configured, using in-memory session storage (not recommended for production)")
+    # Initialize session history if not exists
+    if session_id not in sessions:
+        sessions[session_id] = []
     
-    return True
-
-def initialize_system():
-    """Initialize the supply planning system"""
+    # Use provided history or get from sessions
+    if history is None:
+        history = sessions[session_id]
+    
+    print(f"\n{'='*50}")
+    print(f"Session: {session_id[:8]}...")
+    print(f"Query: {query}")
+    print(f"{'='*50}")
+    
+    # Convert history to conversation context string
+    conversation_context = ""
+    if history:
+        context_parts = []
+        for msg in history:
+            if isinstance(msg, dict) and "role" in msg and "content" in msg:
+                role = "User" if msg["role"] == "user" else "Assistant"
+                context_parts.append(f"{role}: {msg['content']}")
+            elif isinstance(msg, (list, tuple)) and len(msg) == 2:
+                user_msg, assistant_msg = msg
+                context_parts.append(f"User: {user_msg}")
+                context_parts.append(f"Assistant: {assistant_msg}")
+        
+        # Use last 6 messages (3 exchanges) for context
+        conversation_context = "\n".join(context_parts[-6:])
+    
+    # Initialize state with conversation context
+    state = {
+        "query": query,
+        "session_id": session_id,
+        "conversation_context": conversation_context,
+        "intent": "",
+        "intent_confidence": 0.0,
+        "intent_reasoning": "",
+        "rag_context": "",
+        "agent_response": "",
+        "agent_used": "",
+        "usage": {},
+        "error": ""
+    }
+    
+    # Run the graph
     try:
-        logger.info("Initializing Adidas Supply Planning System...")
+        result = supply_planning_graph.invoke(state)
         
-        # Create necessary directories
-        directories = ["logs", "data", "data/vector_store"]
-        for directory in directories:
-            os.makedirs(directory, exist_ok=True)
-            logger.debug(f"Created directory: {directory}")
+        if result.get("error"):
+            print(f"Error: {result['error']}")
+            # Store error in history
+            sessions[session_id].append({
+                "role": "user", 
+                "content": query
+            })
+            sessions[session_id].append({
+                "role": "assistant", 
+                "content": f"Error: {result['error']}"
+            })
+        else:
+            print(f"\nAgent: {result['agent_used']}")
+            print(f"Intent: {result['intent']} ({result['intent_confidence']:.2f})")
+            print(f"\nResponse: {result['agent_response']}")
+            
+            if result.get("usage"):
+                tokens = result['usage'].get('total_tokens', 0)
+                print(f"\nTokens: {tokens}")
+            
+            # Store successful response in history
+            sessions[session_id].append({
+                "role": "user", 
+                "content": query
+            })
+            sessions[session_id].append({
+                "role": "assistant", 
+                "content": result['agent_response']
+            })
         
-        logger.info("System initialized successfully")
-        return True
+        return result
         
     except Exception as e:
-        logger.error(f"Failed to initialize system: {str(e)}")
-        return False
+        print(f"Error: {e}")
+        # Store error in history
+        sessions[session_id].append({
+            "role": "user", 
+            "content": query
+        })
+        sessions[session_id].append({
+            "role": "assistant", 
+            "content": f"Error: {str(e)}"
+        })
+        return None
 
-def run_streamlit():
-    """Run the Streamlit UI"""
-    import streamlit.web.cli as stcli
-    import sys
+def display_history(history):
+    """Display conversation history in a readable format."""
+    if not history:
+        print("No conversation history yet.")
+        return
     
-    logger.info("Starting Streamlit UI...")
+    print("\n" + "="*60)
+    print("CONVERSATION HISTORY")
+    print("="*60)
     
-    # Get the path to the Streamlit app
-    app_path = Path(__file__).parent / "streamlit_app" / "app.py"
-    
-    # Run Streamlit
-    sys.argv = ["streamlit", "run", str(app_path), "--server.port=8501", "--server.address=0.0.0.0"]
-    sys.exit(stcli.main())
+    for i, msg in enumerate(history):
+        if msg["role"] == "user":
+            print(f"\n👤 You: {msg['content']}")
+        else:
+            print(f"🤖 AI: {msg['content']}")
+            if i < len(history) - 1:
+                print("-" * 40)
 
-def run_api():
-    """Run the FastAPI server"""
-    logger.info("Starting API server...")
-    uvicorn.run(
-        "api.app:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=False,
-        log_level="info"
-    )
+def interactive():
+    """Simple interactive mode."""
+    session_id = str(uuid.uuid4())
+    print("\n" + "="*60)
+    print("Adidas Supply Planning System")
+    print("="*60)
+    print("Commands:")
+    print("  'quit' - Exit the program")
+    print("  'history' - Show full conversation history")
+    print("  'clear' - Clear current session history")
+    print("  'new' - Start a new session")
+    print("="*60)
+    
+    while True:
+        query = input("\nYou: ").strip()
+        
+        if query.lower() == 'quit':
+            print("Goodbye!")
+            break
+            
+        elif query.lower() == 'history':
+            display_history(sessions.get(session_id, []))
+            
+        elif query.lower() == 'clear':
+            sessions[session_id] = []
+            print("✓ Conversation history cleared")
+            
+        elif query.lower() == 'new':
+            session_id = str(uuid.uuid4())
+            sessions[session_id] = []
+            print(f"✓ New session started (ID: {session_id[:8]}...)")
+            
+        elif query:
+            run_query(query, session_id)
 
 def main():
-    """Main entry point"""
-    parser = argparse.ArgumentParser(description="Adidas Supply Planning System")
-    parser.add_argument(
-        "--mode",
-        type=str,
-        choices=["streamlit", "api", "both"],
-        default="streamlit",
-        help="Run mode: streamlit UI, API server, or both"
-    )
+    """Main entry point."""
+    import sys
     
-    args = parser.parse_args()
-    
-    # Check environment
-    if not check_environment():
-        sys.exit(1)
-    
-    # Initialize system
-    if not initialize_system():
-        sys.exit(1)
-    
-    # Run in specified mode
-    if args.mode == "streamlit":
-        run_streamlit()
-    elif args.mode == "api":
-        run_api()
-    elif args.mode == "both":
-        import threading
-        api_thread = threading.Thread(target=run_api, daemon=True)
-        api_thread.start()
-        run_streamlit()
+    if len(sys.argv) > 1:
+        # Run single query from command line
+        query = ' '.join(sys.argv[1:])
+        run_query(query)
+    else:
+        # Run interactive mode
+        interactive()
 
 if __name__ == "__main__":
     main()
