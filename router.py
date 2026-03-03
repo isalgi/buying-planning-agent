@@ -1,5 +1,6 @@
 """Router module for classifying user intent in supply planning queries."""
 import os
+import json
 from typing import Dict, Any
 from openai import OpenAI
 from langsmith import traceable
@@ -40,9 +41,8 @@ def classify_intent(query: str) -> Dict[str, Any]:
         ]
     )
     
-    import json
     try:
-        result = json.loads(response.choices[0].message.content)
+        result = json.loads(response.choices[0].message.content) # type: ignore
     except:
         result = {
             "category": "general",

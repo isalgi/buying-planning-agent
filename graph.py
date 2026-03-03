@@ -12,14 +12,16 @@ from agents.price_agent import price_optimization_agent
 from router import route_query, classify_intent
 from rag import rag_system
 from db import db_manager
-from langchain_core.runnables.graph import MermaidDrawMethod
+from openai import OpenAI
+
+client = OpenAI()
 
 # Define state schema with conversation context
 class AgentState(TypedDict):
     """State for the LangGraph agent workflow."""
     query: str
     session_id: str
-    conversation_context: str  # New field for conversation history
+    conversation_context: str
     intent: str
     intent_confidence: float
     intent_reasoning: str
@@ -156,8 +158,7 @@ Relevant documentation:
 @traceable(name="general_agent_node", run_type="chain")
 def general_agent_node(state: AgentState) -> AgentState:
     """Node for handling general queries with conversation context."""
-    from openai import OpenAI
-    client = OpenAI()
+
     
     query = state["query"]
     context = state.get("conversation_context", "")
