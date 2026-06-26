@@ -125,7 +125,7 @@ def create_session():
     return session_id
 
 # Create Gradio interface
-with gr.Blocks(title="Adidas Supply Planning") as demo:
+with gr.Blocks(title="Adidas Supply Planning", theme=gr.themes.Soft()) as demo:
     gr.Markdown("""
     # 👟 Adidas Supply Planning System
     Ask about demand forecasting, size curves, or pricing optimization.
@@ -219,8 +219,7 @@ with gr.Blocks(title="Adidas Supply Planning") as demo:
 
 if __name__ == "__main__":
     demo.launch(
-        share=False, 
-        server_name="127.0.0.1", 
-        server_port=7860,
-        theme=gr.themes.Soft()
+        share=False,
+        server_name="127.0.0.1",
+        server_port=7860
     )

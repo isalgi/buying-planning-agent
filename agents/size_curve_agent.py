@@ -3,10 +3,10 @@ import os
 from typing import Dict, Any
 from openai import OpenAI
 from langsmith import traceable
-from config import OPENAI_API_KEY, LLM_MODEL, TEMPERATURE
+from config import OPENAI_API_KEY, GEMINI_BASE_URL, LLM_MODEL, TEMPERATURE
 
-# Initialize OpenAI client
-client = OpenAI(api_key=OPENAI_API_KEY)
+# Initialize OpenAI-compatible client (pointed at Gemini)
+client = OpenAI(api_key=OPENAI_API_KEY, base_url=GEMINI_BASE_URL)
 
 @traceable(name="size_curve_agent", run_type="chain")
 def size_curve_agent(query: str, context: str = None) -> Dict[str, Any]:

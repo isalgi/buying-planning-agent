@@ -11,18 +11,22 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema import Document
 from langsmith import traceable
 from config import (
-    OPENAI_API_KEY, 
-    EMBEDDING_MODEL, 
-    CHUNK_SIZE, 
+    OPENAI_API_KEY,
+    GEMINI_BASE_URL,
+    EMBEDDING_MODEL,
+    CHUNK_SIZE,
     CHUNK_OVERLAP,
     TOP_K_RESULTS,
     RAG_DOCUMENTS_PATH
 )
 
-# Initialize OpenAI client
-client = OpenAI(api_key=OPENAI_API_KEY)
+# Initialize OpenAI-compatible client (pointed at Gemini)
+client = OpenAI(api_key=OPENAI_API_KEY, base_url=GEMINI_BASE_URL)
 embeddings = OpenAIEmbeddings(
     model=EMBEDDING_MODEL,
+    api_key=OPENAI_API_KEY,
+    base_url=GEMINI_BASE_URL,
+    check_embedding_ctx_length=False,
 )
 
 class RAGSystem:

@@ -13,8 +13,9 @@ from router import route_query, classify_intent
 from rag import rag_system
 from db import db_manager
 from openai import OpenAI
+from config import OPENAI_API_KEY, GEMINI_BASE_URL, LLM_MODEL
 
-client = OpenAI()
+client = OpenAI(api_key=OPENAI_API_KEY, base_url=GEMINI_BASE_URL)
 
 # Define state schema with conversation context
 class AgentState(TypedDict):
@@ -174,7 +175,7 @@ def general_agent_node(state: AgentState) -> AgentState:
     messages.append({"role": "user", "content": query})
     
     response = client.chat.completions.create(
-        model="gpt-4-turbo-preview",
+        model=LLM_MODEL,
         messages=messages
     )
     

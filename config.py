@@ -6,10 +6,11 @@ from pathlib import Path
 # Load environment variables
 load_dotenv()
 
-# OpenAI Configuration
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+# Gemini Configuration (used via Google's OpenAI-compatible endpoint, free tier)
+OPENAI_API_KEY = os.getenv("GOOGLE_API_KEY")
 if not OPENAI_API_KEY:
-    raise ValueError("OPENAI_API_KEY not found in environment variables")
+    raise ValueError("GOOGLE_API_KEY not found in environment variables")
+GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
 
 # LangSmith Configuration
 LANGSMITH_API_KEY = os.getenv("LANGSMITH_API_KEY")
@@ -23,13 +24,13 @@ DB_PATH.parent.mkdir(exist_ok=True)
 # RAG Configuration
 RAG_DOCUMENTS_PATH = Path("data/supply_docs")
 RAG_DOCUMENTS_PATH.mkdir(exist_ok=True)
-EMBEDDING_MODEL = "text-embedding-ada-002"
+EMBEDDING_MODEL = "gemini-embedding-001"
 CHUNK_SIZE = 1000
 CHUNK_OVERLAP = 200
 TOP_K_RESULTS = 3
 
 # Model Configuration
-LLM_MODEL = "gpt-4-turbo-preview"
+LLM_MODEL = "gemini-2.5-flash"
 TEMPERATURE = 0.7
 
 if __name__ == "__main__":
