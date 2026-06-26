@@ -136,11 +136,10 @@ with gr.Blocks(title="Adidas Supply Planning", theme=gr.themes.Soft()) as demo:
     
     with gr.Row():
         with gr.Column(scale=3):
-            # Remove type parameter - not needed in Gradio 6.8.0
-            # The Chatbot will accept MessageDict format by default
             chatbot = gr.Chatbot(
-                label="Conversation", 
-                height=500
+                label="Conversation",
+                height=500,
+                type="messages"
             )
             msg = gr.Textbox(label="Your Question", placeholder="e.g., What is demand forecast for Ultraboost?")
             
